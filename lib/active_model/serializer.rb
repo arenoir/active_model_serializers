@@ -1,6 +1,7 @@
 require 'active_model/array_serializer'
 require 'active_model/serializable'
 require 'active_model/serializer/associations'
+require 'active_model/serializer/params_adapter'
 require 'active_model/serializer/config'
 
 require 'thread'
@@ -106,9 +107,10 @@ end
       @root     = options.fetch(:root, self.class._root)
       @meta_key = options[:meta_key] || :meta
       @meta     = options[@meta_key]
-      @options  = options.reject{|k,v| [:scope, :root, :meta_key, :meta].include?(k) }
+      @params   = options[:params]
+      @options  = options.reject{|k,v| [:scope, :root, :meta_key, :meta, :params].include?(k) }
     end
-    attr_accessor :object, :scope, :meta_key, :meta, :root, :options
+    attr_accessor :object, :scope, :meta_key, :meta, :root, :options, :params, :ancestors
 
     def json_key
       if root == true || root.nil?
@@ -119,22 +121,22 @@ end
     end
 
     def attributes
-      filter_attributes(self.class._attributes.dup).each_with_object({}) do |name, hash|
+      attributes_keys.each_with_object({}) do |name, hash|
         hash[name] = send(name)
       end
     end
 
     def associations
       associations = self.class._associations
-      included_associations = filter_associations(associations.keys)
+      
       associations.each_with_object({}) do |(name, association), hash|
-        if included_associations.include? name
-          if association.embed_ids?
-            hash[association.key] = serialize_ids association
-          elsif association.embed_objects?
-            associated_data = send(association.name)
-            hash[association.embedded_key] = serialize(association, associated_data)
-          end
+        next unless include_association?(association)
+        
+        if association.embed_ids?
+          hash[association.key] = serialize_ids association
+        elsif association.embed_objects?
+          associated_data = send(association.name)
+          hash[association.embedded_key] = serialize(association, associated_data)
         end
       end
     end
@@ -149,19 +151,17 @@ end
 
     def embedded_in_root_associations
       associations = self.class._associations
-      included_associations = filter_associations(associations.keys)
+
       associations.each_with_object({}) do |(name, association), hash|
-        if included_associations.include? name
-          if association.embed_in_root?
-            associated_data = Array(send(association.name))
-            hash[association.root_key] = serialize(association, associated_data)
-          end
+        if association.embed_in_root? && include_association?(association)
+          associated_data = Array(send(association.name))
+          hash[association.root_key] = serialize(association, associated_data)
         end
       end
     end
 
     def serialize(association, object)
-      association.build_serializer(object, scope: scope).serializable_object
+      association.build_serializer(object, {scope: scope, params: params}).serializable_object
     end
 
     def serialize_ids(association)
@@ -179,5 +179,54 @@ end
       hash.merge! associations
     end
     alias_method :serializable_object, :serializable_hash
+    
+    private
+
+      def include_association?(_association)
+        association_keys.include?(_association.name.to_sym) && 
+        params_include_association?(_association)
+      end
+      
+      def params_include_association?(_association)
+        if params
+          _chain = Array(association_chain).push(_association.root_key)
+          
+          params.include_association?(_association)
+        else
+          true
+        end
+      end
+
+      def attributes_keys
+        @attributes_keys ||= filtered_attributes_keys
+      end
+
+      def filtered_attributes_keys
+        _attr_keys   = filter_attributes(self.class._attributes.dup)
+        _filter_keys = params && params.attributes_for(json_key)
+        
+        if _filter_keys
+          _attr_keys = _attr_keys & _filter_keys
+        end
+
+        return _attr_keys
+      end
+
+      def association_keys
+        @association_keys ||= filtered_association_keys
+      end
+
+      def filtered_association_keys
+        _assocations = self.class._associations
+        _assoc_keys  = filter_associations(_assocations.keys)
+        _param_keys = params && params.associations_for(json_key)
+
+        if _param_keys
+           _assoc_keys = _assoc_keys & _param_keys
+         end
+        
+        return _assoc_keys
+      end
+    
   end
 end
