@@ -24,7 +24,7 @@ module ActiveModel
       end
 
       attr_reader :name, :embed_ids, :embed_objects
-      attr_accessor :embed_in_root, :embed_key, :key, :embedded_key, :root_key, :serializer_class, :options
+      attr_accessor :embed_in_root, :embed_key, :key, :embedded_key, :root_key, :serializer_class, :options, :association_chain
       alias embed_ids? embed_ids
       alias embed_objects? embed_objects
       alias embed_in_root? embed_in_root

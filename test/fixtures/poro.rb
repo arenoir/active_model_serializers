@@ -26,6 +26,11 @@ class Profile < Model
 end
 
 class Post < Model
+  
+  def author
+    User.new(name: 'PU')
+  end
+  
   def comments
     @comments ||= [Comment.new(content: 'C1'),
                    Comment.new(content: 'C2')]
@@ -33,6 +38,9 @@ class Post < Model
 end
 
 class Comment < Model
+  def author
+    User.new(name: 'CU')
+  end
 end
 
 ###
@@ -62,3 +70,16 @@ end
 class CommentSerializer < ActiveModel::Serializer
   attributes :content
 end
+
+class AuthorCommentSerialzer < ActiveModel::Serializer
+  attributes :content
+  has_one :author
+end
+
+class AuthorPostSerializer < ActiveModel::Serializer
+  attributes :title, :body
+
+  has_many :comments, serializer: AuthorCommentSerialzer
+  has_one :author
+end
+
