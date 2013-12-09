@@ -234,6 +234,17 @@ module ActionController
         @association.embed = :ids
         @association.embed_in_root = true
 
+        get :render_array_embeding_in_root, fields: [:name]
+        assert_equal 'application/json', @response.content_type
+
+        assert_equal("{\"my\":[{\"name\":\"Name 1\",\"profile_id\":#{@controller.user.profile.object_id}}],\"profiles\":[{}]}", @response.body)
+
+      end
+
+      def test_render_array_with_fieldset_with_document_type
+        @association.embed = :ids
+        @association.embed_in_root = true
+
         get :render_array_embeding_in_root, fields: { user: [:name], profile: [:name] }
         assert_equal 'application/json', @response.content_type
 

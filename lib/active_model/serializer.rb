@@ -214,7 +214,7 @@ end
       end
 
       def params_keyset
-        @params_keyset ||= params && params.keyset(json_key.to_sym)
+        @params_keyset ||= params && params.keyset(json_key.to_sym, association_chain)
       end
 
       def include_association?(_association)

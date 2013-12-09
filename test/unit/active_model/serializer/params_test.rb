@@ -5,7 +5,7 @@ module ActiveModel
     class FieldsetTest < ActiveModel::TestCase
       def setup
         params = ActionController::Parameters.new({fields: [:name] })
-        params = ActiveModel::Serializer::ParamsAdapter.new(params, 'profile')
+        params = ActiveModel::Serializer::ParamsAdapter.new(params)
         @profile = Profile.new({ name: 'Name 1', description: 'Description 1', comments: 'Comments 1' })
         @profile_serializer = ProfileSerializer.new(@profile, {params: params})
       end
@@ -25,7 +25,7 @@ module ActiveModel
         @association.embed_in_root = true
         
         params = ActionController::Parameters.new({include: ['comments'] })
-        params = ActiveModel::Serializer::ParamsAdapter.new(params, 'author_post')
+        params = ActiveModel::Serializer::ParamsAdapter.new(params)
         
         @post = Post.new({ title: 'Title 1', body: 'Body 1', date: '1/1/2000' })
         @post_serializer = AuthorPostSerializer.new(@post, {params: params})
