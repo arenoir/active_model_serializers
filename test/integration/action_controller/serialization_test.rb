@@ -229,6 +229,17 @@ module ActionController
 
         assert_equal("{\"my\":[{\"name\":\"Name 1\",\"email\":\"mail@server.com\",\"profile_id\":#{@controller.user.profile.object_id}}],\"profiles\":[{\"name\":\"N1\",\"description\":\"D1\"}]}", @response.body)
       end
+
+      def test_render_array_with_fieldset
+        @association.embed = :ids
+        @association.embed_in_root = true
+
+        get :render_array_embeding_in_root, fields: { user: [:name], profile: [:name] }
+        assert_equal 'application/json', @response.content_type
+
+        assert_equal("{\"my\":[{\"name\":\"Name 1\",\"profile_id\":#{@controller.user.profile.object_id}}],\"profiles\":[{\"name\":\"N1\"}]}", @response.body)
+
+      end
     end
   end
 end

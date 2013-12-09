@@ -43,9 +43,9 @@ module ActiveModel
         _attrs  = {}
 
         if _params.is_a?(Hash)
-          _attrs = _params
+          _attrs = _params.inject({}) { |hash,(k,v)| hash[k.to_sym] = v.map(&:to_sym); hash}
         elsif _params.is_a?(Array)
-          _attrs[root_name] = _params.map(&:to_sym)
+          _attrs[root_name.to_sym] = _params.map(&:to_sym)
         end
 
         return _attrs
