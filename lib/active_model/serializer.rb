@@ -166,9 +166,8 @@ end
             if _include 
               hash[association.root_key] = _output
             end
-          
-            hash.merge!( _serializer.serializable_data )
             
+            hash.merge!( _serializer.serializable_data )
           end
         end
       end
