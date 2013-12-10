@@ -165,15 +165,10 @@ end
 
             if _include 
               hash[association.root_key] = _output
-            else
-              #hash.merge!(_output)
             end
-
-            #puts _serializer.object.class
-            #puts _serializer.serializable_data.to_yaml
-            #puts _serializer.embedded_in_root_associations.to_yaml
-            #hash.merge!(_serializer.serializable_data)
-            #hash
+          
+            hash.merge!( _serializer.serializable_data )
+            
           end
         end
       end
