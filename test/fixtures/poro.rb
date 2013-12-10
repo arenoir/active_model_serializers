@@ -34,6 +34,8 @@ class Post < Model
     @author ||= Person.new(name: 'PU')
   end
   
+  attr_writer :comments
+
   def comments
     @comments ||= [Comment.new(content: 'C1'),
                    Comment.new(content: 'C2')]
