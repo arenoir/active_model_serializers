@@ -3,6 +3,8 @@ require 'coverage_setup'
 require 'minitest/autorun'
 require 'active_model_serializers'
 require 'fixtures/poro'
+require 'fixtures/jsonapi_serializers'
+
 
 module TestHelper
   Routes = ActionDispatch::Routing::RouteSet.new

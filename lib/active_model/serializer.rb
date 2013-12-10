@@ -158,27 +158,39 @@ end
           _include = include_association?(association)
 
           if _include || include_nested_association?(association)
-            _data   = Array(send(association.name))
-            _output = serialize(association, _data)
+            _data       = Array(send(association.name))
+            _serializer = build_serializer(association, _data)
+
+            _output     = _serializer.serializable_object
 
             if _include 
               hash[association.root_key] = _output
             else
-              hash.merge(_output)
+              #hash.merge!(_output)
             end
+
+            #puts _serializer.object.class
+            #puts _serializer.serializable_data.to_yaml
+            #puts _serializer.embedded_in_root_associations.to_yaml
+            #hash.merge!(_serializer.serializable_data)
+            #hash
           end
         end
       end
     end
 
-    def serialize(association, object)
+    def build_serializer(association, object)
       _options = {
         scope: scope,
         params: params,
         association_chain: association_chain_for(association)
       }
 
-      association.build_serializer(object, _options).serializable_object
+      association.build_serializer(object, _options)
+    end
+
+    def serialize(association, object)
+      build_serializer(association, object).serializable_object
     end
 
     def serialize_ids(association)
@@ -204,21 +216,21 @@ end
       end
 
       def filter_attribute_keys
-        _keys = filter_attributes(self.class._attributes.dup)
+        keys = filter_attributes(self.class._attributes.dup)
         
         if params_keyset
-          _keys = _keys & params_keyset
+          keys = keys & params_keyset
         end
 
-        return _keys
+        return keys
       end
 
       def params_keyset
         @params_keyset ||= params && params.keyset(json_key.to_sym, association_chain)
       end
 
-      def include_association?(_association)
-        association_keys.include?(_association.name.to_sym)
+      def include_association?(association)
+        association_keys.include?(association.name.to_sym)
       end
 
       def association_keys
@@ -226,27 +238,27 @@ end
       end
 
       def filter_association_keys
-        _keys = filter_associations(self.class._associations.keys)
+        keys = filter_associations(self.class._associations.keys)
 
         if params_include_keys
-          _keys = _keys & params_include_keys
+          keys = keys & params_include_keys
         end
         
-        return _keys
+        return keys
       end
 
       def params_include_keys
         @params_include_keys ||= params && params.include_keys(association_chain)
       end
 
-      def include_nested_association?(_association)
-        _chain = association_chain_for(_association)
+      def include_nested_association?(association)
+        chain = association_chain_for(association)
 
-        params && params.nested_associations?(_chain)
+        params && params.nested_associations?(chain)
       end
 
-      def association_chain_for(_association)
-        _association.association_chain ||= association_chain.dup.push(_association.name.to_s)
+      def association_chain_for(association)
+        association.association_chain ||= association_chain.dup.push(association.name.to_sym)
       end
   end
 end

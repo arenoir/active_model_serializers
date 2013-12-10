@@ -16,6 +16,9 @@ end
 ###
 ## Models
 ###
+class Person < Model
+end
+
 class User < Model
   def profile
     @profile ||= Profile.new(name: 'N1', description: 'D1')
@@ -28,7 +31,7 @@ end
 class Post < Model
   
   def author
-    User.new(name: 'PU')
+    @author ||= Person.new(name: 'PU')
   end
   
   def comments
@@ -39,7 +42,7 @@ end
 
 class Comment < Model
   def author
-    User.new(name: 'CU')
+    @author ||= Person.new(name: "CA")
   end
 end
 
@@ -70,16 +73,3 @@ end
 class CommentSerializer < ActiveModel::Serializer
   attributes :content
 end
-
-class AuthorCommentSerialzer < ActiveModel::Serializer
-  attributes :content
-  has_one :author
-end
-
-class AuthorPostSerializer < ActiveModel::Serializer
-  attributes :title, :body
-
-  has_many :comments, serializer: AuthorCommentSerialzer
-  has_one :author
-end
-

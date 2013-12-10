@@ -19,7 +19,7 @@ module ActiveModel
 
     class IncludesTest < ActiveModel::TestCase
       def setup
-        @association = AuthorPostSerializer._associations[:comments]
+        @association = JsonApi::PostSerializer._associations[:comments]
         @old_association = @association.dup
         @association.embed = :ids
         @association.embed_in_root = true
@@ -28,17 +28,19 @@ module ActiveModel
         params = ActiveModel::Serializer::ParamsAdapter.new(params)
         
         @post = Post.new({ title: 'Title 1', body: 'Body 1', date: '1/1/2000' })
-        @post_serializer = AuthorPostSerializer.new(@post, {params: params})
+        @post_serializer = JsonApi::PostSerializer.new(@post, {params: params})
       end
 
       def teardown
-        PostSerializer._associations[:comments] = @old_association
+        JsonApi::PostSerializer._associations[:comments] = @old_association
       end
 
       def test_filtered_associations_serialization
+        comment_ids = @post.comments.map { |c| c.object_id }
+
         assert_equal({
-          'author_post' => { title: 'Title 1', body: 'Body 1', 'comment_ids' => @post.comments.map { |c| c.object_id } },
-          comments: [{ content: 'C1' }, { content: 'C2' }]
+          'post' => { id: @post.object_id, title: 'Title 1', body: 'Body 1', 'comment_ids' => comment_ids},
+          comments: [{ id: comment_ids[0], content: 'C1' }, { id: comment_ids[1], content: 'C2' }]
         }, @post_serializer.as_json)
       end
       
