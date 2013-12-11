@@ -156,18 +156,20 @@ end
       associations.each_with_object({}) do |(name, association), hash|
         if association.embed_in_root?
           _include = include_association?(association)
+          _nested  = include_nested_association?(association)
 
-          if _include || include_nested_association?(association)
+          if _include || _nested
             _data       = Array(send(association.name))
             _serializer = build_serializer(association, _data)
 
-            _output     = _serializer.serializable_object
-
             if _include 
-              hash[association.root_key] = _output
+              hash[association.root_key] = _serializer.serializable_object
             end
-            
-            hash.merge!( _serializer.serializable_data )
+
+            if _nested
+              hash.merge!( _serializer.serializable_data )
+            end
+
           end
         end
       end

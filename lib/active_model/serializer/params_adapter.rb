@@ -30,7 +30,9 @@ module ActiveModel
       end
 
       def nested_associations?(chain)
-        association_chains && association_chains.any? { |_chain| (_chain - chain).any? }
+        return true unless association_chains
+        
+        association_chains.any? { |_chain| (_chain - chain).size > 1 }
       end
 
     private
