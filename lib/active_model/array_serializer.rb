@@ -14,17 +14,20 @@ module ActiveModel
 
     def initialize(object, options={})
       @object          = object
+      @scope           = options[:scope]
       @root            = options.fetch(:root, self.class._root)
       @meta_key        = options[:meta_key] || :meta
       @meta            = options[@meta_key]
       @each_serializer = options[:each_serializer]
-      @options         = options.merge(root: nil)
+      @resource_name   = options[:resource_name]
+      @params          = options[:params]
+      @association_chain = options.fetch(:association_chain, [])
     end
-    attr_accessor :object, :root, :meta_key, :meta, :options
+    attr_accessor :object, :scope, :root, :meta_key, :meta, :params, :association_chain
 
     def json_key
       if root.nil?
-        @options[:resource_name]
+        @resource_name
       else
         root
       end
@@ -32,21 +35,26 @@ module ActiveModel
 
     def serializer_for(item)
       serializer_class = @each_serializer || Serializer.serializer_for(item) || DefaultSerializer
-      serializer_class.new(item, @options)
+      serializer_class.new(item, scope: scope, params: params, association_chain: association_chain)
     end
 
-    def serializable_array
+    def serializable_object
       @object.map do |item|
         serializer_for(item).serializable_object
       end
     end
-    alias_method :serializable_object, :serializable_array
+    alias_method :serializable_array, :serializable_object
 
     def embedded_in_root_associations
       @object.each_with_object({}) do |item, hash|
         serializer_for(item).embedded_in_root_associations.each_pair do |type, objects|
-          hash[type] = hash.fetch(type, []).concat(objects)
-          hash[type].uniq!
+          next if !objects || objects.flatten.empty?
+
+          if hash.has_key?(type)
+            hash[type].concat(objects).uniq!
+          else
+            hash[type] = objects
+          end
         end
       end
     end

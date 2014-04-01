@@ -63,8 +63,8 @@ module ActionController
                 \"comment_ids\":#{@controller.post.comments.map { |c| c.object_id }},
                 \"author_id\":#{@controller.post.author.object_id}
               }],
-              \"comments\":#{comments.to_json},
-              \"authors\":[{}]
+              \"authors\":[{}],
+              \"comments\":#{comments.to_json}
             }
           eos
 
@@ -80,7 +80,7 @@ module ActionController
 
           comments = @controller.post.comments.map {|c| {author_id: c.author.object_id}}
 
-          authors = [@controller.post.author]# + @controller.post.comments.map(&:author)
+          authors = @controller.post.comments.map(&:author) << @controller.post.author
 
           authors_json = authors.map {|a| {id: a.object_id} }.to_json
 
@@ -91,8 +91,8 @@ module ActionController
                 \"comment_ids\":#{@controller.post.comments.map { |c| c.object_id }},
                 \"author_id\":#{@controller.post.author.object_id}
               }],
-              \"comments\":#{comments.to_json},
-              \"authors\":#{authors_json}
+              \"authors\":#{authors_json},
+              \"comments\":#{comments.to_json}
             }
           eos
 
@@ -132,33 +132,33 @@ module ActionController
 
         end
 
-      #   def test_render_array_with_nested_include
-      #     get :index, include: ['comments.author']
-      #     assert_equal 'application/json', @response.content_type
+        def test_render_array_with_nested_include
+          get :index, include: ['comments.author']
+          assert_equal 'application/json', @response.content_type
 
-      #     expected_output = <<-eos
-      #       {
-      #         "\my\":[
-      #           {
-      #             \"id\":#{@controller.post.object_id},
-      #             \"title\":\"Title1\",
-      #             \"body\":\"Body1\"
-      #           }
-      #         ],
-      #         \"authors\":[
-      #           {
-      #             \"id\":#{@controller.post.author.object_id},
-      #             \"name\":\"PU\",
-      #             \"email\":null
-      #           }
-      #         ]
-      #       }
-      #     eos
+          expected_output = <<-eos
+            {
+              "\my\":[
+                {
+                  \"id\":#{@controller.post.object_id},
+                  \"title\":\"Title1\",
+                  \"body\":\"Body1\"
+                }
+              ],
+              \"authors\":[
+                {
+                  \"id\":#{@controller.post.author.object_id},
+                  \"name\":\"PU\",
+                  \"email\":null
+                }
+              ]
+            }
+          eos
 
-      #     expected_output.gsub!(/\s+/, "")
+          expected_output.gsub!(/\s+/, "")
 
-      #     assert_equal(expected_output, @response.body)
-      #   end
+          assert_equal(expected_output, @response.body)
+        end
 
       end
     end

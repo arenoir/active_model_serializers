@@ -2,7 +2,7 @@ require 'test_helper'
 
 module ActiveModel
   class Serializer
-    class HasManyTest < ActiveModel::TestCase
+    class HasManyTest < Minitest::Test
       def setup
         @association = PostSerializer._associations[:comments]
         @old_association = @association.dup
@@ -19,6 +19,18 @@ module ActiveModel
         assert_equal 1, PostSerializer._associations.length
         assert_kind_of Association::HasMany, @association
         assert_equal 'comments', @association.name
+      end
+
+      def test_associations_inheritance
+        inherited_serializer_klass = Class.new(PostSerializer) do
+          has_many :some_associations
+        end
+        another_inherited_serializer_klass = Class.new(PostSerializer)
+
+        assert_equal(PostSerializer._associations.length + 1,
+          inherited_serializer_klass._associations.length)
+        assert_equal(PostSerializer._associations.length,
+          another_inherited_serializer_klass._associations.length)
       end
 
       def test_associations_embedding_ids_serialization_using_serializable_hash
@@ -116,9 +128,9 @@ module ActiveModel
       def test_associations_using_a_given_serializer
         @association.embed = :ids
         @association.embed_in_root = true
-        @association.serializer_class = Class.new(ActiveModel::Serializer) do
+        @association.serializer_from_options = Class.new(Serializer) do
           def content
-            'fake'
+            object.read_attribute_for_serialization(:content) + '!'
           end
 
           attributes :content
@@ -126,14 +138,14 @@ module ActiveModel
 
         assert_equal({
           'post' => { title: 'Title 1', body: 'Body 1', 'comment_ids' => @post.comments.map { |c| c.object_id } },
-          comments: [{ content: 'fake' }, { content: 'fake' }]
+          comments: [{ content: 'C1!' }, { content: 'C2!' }]
         }, @post_serializer.as_json)
       end
 
       def test_associations_embedding_ids_using_a_given_array_serializer
         @association.embed = :ids
         @association.embed_in_root = true
-        @association.serializer_class = Class.new(ActiveModel::ArraySerializer) do
+        @association.serializer_from_options = Class.new(ArraySerializer) do
           def serializable_object
             { my_content: ['fake'] }
           end
@@ -146,7 +158,7 @@ module ActiveModel
       end
 
       def test_associations_embedding_objects_using_a_given_array_serializer
-        @association.serializer_class = Class.new(ActiveModel::ArraySerializer) do
+        @association.serializer_from_options = Class.new(ArraySerializer) do
           def serializable_object
             { my_content: ['fake'] }
           end

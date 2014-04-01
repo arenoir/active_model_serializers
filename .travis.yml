@@ -2,18 +2,18 @@ language: ruby
 rvm:
   - 1.9.3
   - 2.0.0
+  - 2.1.1
   - ruby-head
   - jruby
-  - rbx
-gemfile:
-  - Gemfile
-  - Gemfile.rails3
-  - Gemfile.edge
+  - rbx-2
+env:
+  - "RAILS_VERSION=3.2.17"
+  - "RAILS_VERSION=4.0.3"
+  - "RAILS_VERSION=4.1.0.rc1"
+  - "RAILS_VERSION=master"
 matrix:
   allow_failures:
-    - rvm: jruby
-    - rvm: rbx
-    - gemfile: Gemfile.edge
+    - rvm: ruby-head
   fast_finish: true
 notifications:
   email: false

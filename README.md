@@ -8,6 +8,8 @@
 
 **master is under development, there are some incompatible changes with the current stable release.**
 
+Since `0.8` there is no `options` accessor in the serializers. Some issues and pull-requests are attemps to bring back the ability to use Rails url helpers in the serializers, but nothing is really settled yet.
+
 If you want to read the stable documentation visit [0.8 README](https://github.com/rails-api/active_model_serializers/blob/0-8-stable/README.md)
 
 ## Purpose
@@ -70,10 +72,6 @@ $ rails g serializer post
 Currently `ActiveModel::Serializers` expects objects to implement
 read\_attribute\_for\_serialization. That's all you need to do to have
 your POROs supported. 
-
-# ActiveModel::Serializer
-
-All new serializers descend from ActiveModel::Serializer
 
 # render :json
 
@@ -157,6 +155,29 @@ To specify a custom serializer for the items within an array:
 ```ruby
 render json: @posts, each_serializer: FancyPostSerializer
 ```
+
+## Render independently
+
+By default the setting of serializer is in controller as described above which is the
+recommeneded way. However, there may be cases you need to render the json object elsewhere
+say in a helper or a view when controller is only for main object.
+
+Then you can render the serialized JSON independently.
+
+```ruby
+def current_user_as_json_helper
+  CurrentUserSerializer.new(current_user).to_json
+end
+```
+
+You can also render an array of objects using ArraySerializer.
+
+```ruby
+def users_array_as_json_helper(users)
+  ActiveModel::ArraySerializer.new(users, each_serializer: UserSerializer).to_json
+end
+```
+
 
 ## Disabling the root element
 
@@ -267,6 +288,7 @@ Serializers provides a method named `filter_attributes` and `filter_associations
 attributes and associations should be included in the output. This is
 typically used to customize output based on `current_user`. For example:
 
+
 ```ruby
 class PostSerializer < ActiveModel::Serializer
   attributes :id, :title, :body, :author
@@ -282,7 +304,8 @@ end
 ```
 
 And it's also safe to mutate keys argument by doing keys.delete(:author)
-in case you want to avoid creating two extra arrays.
+in case you want to avoid creating two extra arrays. Note that if you do an
+in-place modification, you still need to return the modified array.
 
 If you would like the key in the outputted JSON to be different from its name
 in ActiveRecord, you can declare the attribute with the different name
@@ -722,6 +745,29 @@ end
 ```
 
 The caching interface uses `Rails.cache` under the hood.
+
+# ApplicationSerializer
+
+By default, new serializers descend from ActiveModel::Serializer. However, if you wish to share behaviour across your serializers you can create an ApplicationSerializer at ```app/serializers/application_serializer.rb```:
+
+```ruby
+class ApplicationSerializer < ActiveModel::Serializer
+end
+```
+
+Any newly generated serializers will automatically descend from ApplicationSerializer.
+
+```
+$ rails g serializer post
+```
+
+now generates:
+
+```ruby
+class PostSerializer < ApplicationSerializer
+  attributes :id
+end
+````
 
 # Design and Implementation Guidelines
 

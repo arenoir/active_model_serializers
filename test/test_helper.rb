@@ -1,10 +1,13 @@
 require 'bundler/setup'
-require 'coverage_setup'
+require 'coverage_setup' if ENV["CI"]
 require 'minitest/autorun'
 require 'active_model_serializers'
 require 'fixtures/poro'
 require 'fixtures/jsonapi_serializers'
 
+
+# Ensure backward compatibility with Minitest 4
+Minitest::Test = MiniTest::Unit::TestCase unless defined?(Minitest::Test)
 
 module TestHelper
   Routes = ActionDispatch::Routing::RouteSet.new

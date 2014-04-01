@@ -2,7 +2,7 @@ require 'test_helper'
 
 module ActiveModel
   class Serializer
-    class HasOneTest < ActiveModel::TestCase
+    class HasOneTest < Minitest::Test
       def setup
         @association = UserSerializer._associations[:profile]
         @old_association = @association.dup
@@ -106,6 +106,21 @@ module ActiveModel
         }, @user_serializer.serializable_hash)
       end
 
+      def test_associations_embedding_nil_ids_including_objects_serialization_using_as_json
+        @association.embed = :ids
+        @association.embed_in_root = true
+        @user.instance_eval do
+          def profile
+            nil
+          end
+        end
+
+        assert_equal({
+          'user' => { name: 'Name 1', email: 'mail@server.com', 'profile_id' => nil },
+          'profiles' => []
+        }, @user_serializer.as_json)
+      end
+
       def test_associations_embedding_ids_including_objects_serialization_using_as_json
         @association.embed = :ids
         @association.embed_in_root = true
@@ -119,7 +134,7 @@ module ActiveModel
       def test_associations_embedding_ids_using_a_given_serializer
         @association.embed = :ids
         @association.embed_in_root = true
-        @association.serializer_class = Class.new(ActiveModel::Serializer) do
+        @association.serializer_from_options = Class.new(Serializer) do
           def name
             'fake'
           end
@@ -134,7 +149,7 @@ module ActiveModel
       end
 
       def test_associations_embedding_objects_using_a_given_serializer
-        @association.serializer_class = Class.new(ActiveModel::Serializer) do
+        @association.serializer_from_options = Class.new(Serializer) do
           def name
             'fake'
           end

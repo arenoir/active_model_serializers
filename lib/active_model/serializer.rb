@@ -14,8 +14,9 @@ module ActiveModel
 
     class << self
       def inherited(base)
-        base._attributes = []
-        base._associations = {}
+        base._root = _root
+        base._attributes = (_attributes || []).dup
+        base._associations = (_associations || {}).dup
       end
 
       def setup
@@ -102,16 +103,17 @@ end
     end
 
     def initialize(object, options={})
-      @object   = object
-      @scope    = options[:scope]
-      @root     = options.fetch(:root, self.class._root)
-      @meta_key = options[:meta_key] || :meta
-      @meta     = options[@meta_key]
-      @params   = options[:params]
+      @object        = object
+      @scope         = options[:scope]
+      @root          = options.fetch(:root, self.class._root)
+      @meta_key      = options[:meta_key] || :meta
+      @meta          = options[@meta_key]
+      @wrap_in_array = options[:_wrap_in_array]
+      @params        = options[:params]
       @association_chain = options.fetch(:association_chain, [])
-      @options  = options.reject{|k,v| [:scope, :root, :meta_key, :meta, :params, :association_chain].include?(k) }
     end
-    attr_accessor :object, :scope, :meta_key, :meta, :root, :options, :params, :association_chain
+    attr_accessor :object, :scope, :root, :meta_key, :meta, :params, :association_chain
+
 
     def json_key
       if root == true || root.nil?
@@ -153,23 +155,27 @@ end
     def embedded_in_root_associations
       associations = self.class._associations
 
-      associations.each_with_object({}) do |(name, association), hash|
+      associations.each_with_object({}) do |(name, association), hash| 
         if association.embed_in_root?
-          _include = include_association?(association)
-          _nested  = include_nested_association?(association)
 
-          if _include || _nested
-            _data       = Array(send(association.name))
-            _serializer = build_serializer(association, _data)
+          if include_association?(association)
+            association_object     = send(association.name)
+            association_serializer = build_serializer(association, association_object)
+            serialized_object      = association_serializer.serializable_object
+            key                    = association.root_key
+            
+            hash.merge! association_serializer.embedded_in_root_associations
 
-            if _include 
-              hash[association.root_key] = _serializer.serializable_object
+            if hash.has_key?(key)
+              hash[key].concat(serialized_object).uniq!
+            else
+              hash[key] = serialized_object
             end
 
-            if _nested
-              hash.merge!( _serializer.serializable_data )
-            end
-
+          elsif include_nested_association?(association)
+            association_object     = send(association.name)
+            association_serializer = build_serializer(association, association_object)
+            hash.merge!(association_serializer.embedded_in_root_associations)
           end
         end
       end
@@ -198,13 +204,15 @@ end
       end
     end
 
-    def serializable_hash(options={})
-      return nil if object.nil?
+    def serializable_object(options={})
+      return @wrap_in_array ? [] : nil if @object.nil?
       hash = attributes
       hash.merge! associations
+      @wrap_in_array ? [hash] : hash
     end
-    alias_method :serializable_object, :serializable_hash
-    
+
+    alias_method :serializable_hash, :serializable_object
+
     private
 
       def attribute_keys
@@ -244,7 +252,7 @@ end
       end
 
       def params_include_keys
-        @params_include_keys ||= params && params.include_keys(association_chain)
+        params && params.include_keys(association_chain)
       end
 
       def include_nested_association?(association)
@@ -256,5 +264,6 @@ end
       def association_chain_for(association)
         association.association_chain ||= association_chain.dup.push(association.name.to_sym)
       end
+
   end
 end

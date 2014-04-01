@@ -2,7 +2,7 @@ require 'test_helper'
 
 module ActiveModel
   class Serializer
-    class AttributesTest < ActiveModel::TestCase
+    class AttributesTest < Minitest::Test
       def setup
         @profile = Profile.new({ name: 'Name 1', description: 'Description 1', comments: 'Comments 1' })
         @profile_serializer = ProfileSerializer.new(@profile)
@@ -23,6 +23,18 @@ module ActiveModel
         assert_equal({
           'profile' => { name: 'Name 1', description: 'Description 1' }
         }, @profile_serializer.as_json)
+      end
+
+      def test_attributes_inheritance
+        inherited_serializer_klass = Class.new(ProfileSerializer) do
+          attributes :comments
+        end
+        another_inherited_serializer_klass = Class.new(ProfileSerializer)
+
+        assert_equal([:name, :description, :comments],
+                     inherited_serializer_klass._attributes)
+        assert_equal([:name, :description],
+                     another_inherited_serializer_klass._attributes)
       end
     end
   end
