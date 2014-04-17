@@ -2,7 +2,7 @@ require 'test_helper'
 
 module ActionController
   module Serialization
-    module JsonApiSpec
+    module FieldsetsSpec
       class ArraySerializerWithParamsTest < ActionController::TestCase
         def setup
           super

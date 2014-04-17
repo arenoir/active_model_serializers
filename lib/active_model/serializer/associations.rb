@@ -18,6 +18,8 @@ module ActiveModel
         @embed_key     = options[:embed_key] || :id
         @key           = options[:key]
         @embedded_key  = options[:root] || name
+        
+        @association_chain = options.fetch(:association_chain, [])
 
         serializer = @options[:serializer]
         @serializer_from_options = serializer.is_a?(String) ? serializer.constantize : serializer

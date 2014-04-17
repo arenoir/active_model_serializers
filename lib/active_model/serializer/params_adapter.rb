@@ -31,7 +31,8 @@ module ActiveModel
 
       def nested_associations?(chain)
         return true unless association_chains
-        
+        chain.map!(&:to_sym)
+        puts chain.join('.')
         association_chains.any? { |_chain| (_chain - chain).size > 1 }
       end
 

@@ -157,10 +157,10 @@ end
 
       associations.each_with_object({}) do |(name, association), hash| 
         if association.embed_in_root?
+          association_object     = send(association.name)
+          association_serializer = build_serializer(association, association_object)
 
           if include_association?(association)
-            association_object     = send(association.name)
-            association_serializer = build_serializer(association, association_object)
             serialized_object      = association_serializer.serializable_object
             key                    = association.root_key
             
@@ -173,8 +173,6 @@ end
             end
 
           elsif include_nested_association?(association)
-            association_object     = send(association.name)
-            association_serializer = build_serializer(association, association_object)
             hash.merge!(association_serializer.embedded_in_root_associations)
           end
         end
@@ -258,11 +256,13 @@ end
       def include_nested_association?(association)
         chain = association_chain_for(association)
 
+        puts association_chain.join('.') + association.name.to_s
+
         params && params.nested_associations?(chain)
       end
 
       def association_chain_for(association)
-        association.association_chain ||= association_chain.dup.push(association.name.to_sym)
+        association_chain.dup.push(association.name.to_sym)
       end
 
   end

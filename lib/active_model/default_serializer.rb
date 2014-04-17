@@ -12,6 +12,8 @@ module ActiveModel
     def initialize(object, options={})
       @object = object
       @wrap_in_array = options[:_wrap_in_array]
+      @params          = options[:params]
+      @association_chain = options.fetch(:association_chain, [])
     end
 
     def as_json(options={})
