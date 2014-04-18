@@ -47,6 +47,7 @@ module ActiveModel
       end
 
       def build_serializer(object, options = {})
+        return ActiveModel::DefaultSerializer.new(object, options.merge(@options)) unless object
         serializer_class(object).new(object, options.merge(self.options))
       end
 
