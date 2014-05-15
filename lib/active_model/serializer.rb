@@ -256,8 +256,6 @@ end
       def include_nested_association?(association)
         chain = association_chain_for(association)
 
-        puts association_chain.join('.') + association.name.to_s
-
         params && params.nested_associations?(chain)
       end
 
