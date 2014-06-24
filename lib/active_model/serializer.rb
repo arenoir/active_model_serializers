@@ -132,8 +132,8 @@ end
     def associations
       associations = self.class._associations
       
-      associations.each_with_object({}) do |(name, association), hash|        
-        if include_association?(association)
+      associations.each_with_object({}) do |(name, association), hash| 
+        if include_association?(name)
           if association.embed_ids?
             hash[association.key] = serialize_ids association
           elsif association.embed_objects?
@@ -152,15 +152,20 @@ end
       keys
     end
 
+    def default_include_keys
+      []
+    end
+
     def embedded_in_root_associations
       associations = self.class._associations
 
       associations.each_with_object({}) do |(name, association), hash| 
-        if association.embed_in_root?
-          association_object     = send(association.name)
-          association_serializer = build_serializer(association, association_object)
-
-          if include_association?(association)
+        if include_association?(name)
+        
+          if association.embed_in_root?
+            association_object     = send(association.name)
+            association_serializer = build_serializer(association, association_object)
+          
             serialized_object      = association_serializer.serializable_object
             key                    = association.root_key
             
@@ -231,8 +236,8 @@ end
         @params_keyset ||= params && params.keyset(json_key.to_sym, association_chain)
       end
 
-      def include_association?(association)
-        association_keys.include?(association.name.to_sym)
+      def include_association?(name)
+        association_keys.include?(name)
       end
 
       def association_keys
@@ -244,6 +249,8 @@ end
 
         if params_include_keys
           keys = keys & params_include_keys
+        elsif default_include_keys
+          keys = keys & default_include_keys
         end
         
         return keys
