@@ -8,6 +8,10 @@ module ActiveModel
           @hash = {}
           @top = @options.fetch(:top) { @hash }
 
+          if chain = options[:include]
+            @association_chain = ActiveModel::Serializer::AssociationChain.new(chain)
+          end
+
           if fields = options.delete(:fields)
             @fieldset = ActiveModel::Serializer::Fieldset.new(fields, serializer.json_key)
           else
@@ -25,38 +29,38 @@ module ActiveModel
           else
             @hash[@root] = attributes_for_serializer(serializer, @options)
 
-            serializer.each_association do |name, association, opts|
+            serializer.each_association do |name, serializer, opts|
               @hash[@root][:links] ||= {}
+               
 
-              if association.respond_to?(:each)
-                add_links(name, association, opts)
-              else
-                add_link(name, association, opts)
-              end
+
+                if serializer.respond_to?(:each)
+                  add_links(name, serializer, opts)
+                else
+                  add_link(name, serializer, opts)
+                end
             end
           end
 
           @hash
         end
 
-        def add_links(name, serializers, options)
-          if serializers.first
-            type = serializers.first.object.class.to_s.underscore.pluralize
-          end
-          if name.to_s == type || !type
-            @hash[@root][:links][name] ||= []
-            @hash[@root][:links][name] += serializers.map{|serializer| serializer.id.to_s }
-          else
-            @hash[@root][:links][name] ||= {}
-            @hash[@root][:links][name][:type] = type
-            @hash[@root][:links][name][:ids] ||= []
-            @hash[@root][:links][name][:ids] += serializers.map{|serializer| serializer.id.to_s }
-          end
+        def add_links(name, serializer, options)
+            type = serializer.object_type
+            ids  = serializer.map { |serializer| serializer.id.to_s }
 
-          unless serializers.none? || @options[:embed] == :ids
-            serializers.each do |serializer|
-              add_linked(name, serializer)
+            if !type || name.to_s == type
+              @hash[@root][:links][name] ||= []
+              @hash[@root][:links][name] = ids
+            else
+              @hash[@root][:links][name] ||= {}
+              @hash[@root][:links][name][:type] = type
+              @hash[@root][:links][name][:ids] = ids
             end
+          
+
+          unless serializer.none? || @options[:embed] == :ids
+            serializer.each { |s| add_linked(name, s) }
           end
         end
 
@@ -79,9 +83,11 @@ module ActiveModel
           end
         end
 
-        def add_linked(resource, serializer, parent = nil)
-          resource_path = [parent, resource].compact.join('.')
-          if include_assoc? resource_path
+        def add_linked(resource, serializer, chain = [])
+
+          chain << resource 
+
+          if include_association?(chain)
             plural_name = resource.to_s.pluralize.to_sym
             attrs = attributes_for_serializer(serializer, @options)
             @top[:linked] ||= {}
@@ -89,14 +95,30 @@ module ActiveModel
             @top[:linked][plural_name].push attrs unless @top[:linked][plural_name].include? attrs
           end
 
-          unless serializer.respond_to?(:each)
+          return if serializer.nil? || serializer.respond_to?(:each)
+
+          if associations = associations_for(chain)
             serializer.each_association do |name, association, opts|
-              add_linked(name, association, resource) if association
+              if associations.include?(name)
+                add_linked(name, association, chain) 
+              end
             end
           end
+
         end
 
+
         private
+
+        def associations_for(chain)
+          @association_chain && @association_chain.associations_for(chain)
+        end
+
+
+        def include_association?(chain)
+          @association_chain && @association_chain.include?(chain)
+        end
+
 
         def attributes_for_serializer(serializer, options)
           if fields = @fieldset && @fieldset.fields_for(serializer)
@@ -106,6 +128,13 @@ module ActiveModel
           attributes = serializer.attributes(options)
           attributes[:id] = attributes[:id].to_s if attributes[:id]
           attributes
+        end
+
+        def included_association?(serializer)
+          @association_key && @association_key.include?(serializer)
+        end
+
+        def included_nested_association?(serializer)
         end
 
         def include_assoc? assoc

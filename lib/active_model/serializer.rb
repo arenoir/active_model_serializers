@@ -115,6 +115,10 @@ module ActiveModel
       @root   = options[:root] || (self.class._root ? self.class.root_name : false)
     end
 
+    def object_type
+      object.class.to_s.underscore
+    end
+
     def json_key
       if root == true || root.nil?
         self.class.root_name

@@ -11,9 +11,9 @@ module ActiveModel
             @post = Post.new(id: 1, title: 'New Post', body: 'Body')
             @post_without_comments = Post.new(id: 2, title: 'Second Post', body: 'Second')
             @first_comment = Comment.new(id: 1, body: 'ZOMG A COMMENT')
-            @first_comment.author = nil
+            @first_comment.author = @author
             @second_comment = Comment.new(id: 2, body: 'ZOMG ANOTHER COMMENT')
-            @second_comment.author = nil
+            @second_comment.author = @author
             @post.comments = [@first_comment, @second_comment]
             @post_without_comments.comments = []
             @first_comment.post = @post
@@ -38,6 +38,11 @@ module ActiveModel
                            {id: "1", body: 'ZOMG A COMMENT'},
                            {id: "2", body: 'ZOMG ANOTHER COMMENT'}
                          ], @adapter.serializable_hash[:linked][:comments])
+          end
+
+          def test_includes_linked_comments_author_without_comment
+            @adapter = ActiveModel::Serializer::Adapter::JsonApi.new(@serializer)
+            assert_equal(nil, @adapter.serializable_hash)
           end
 
           def test_limit_fields_of_linked_comments

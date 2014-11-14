@@ -11,6 +11,10 @@ module ActiveModel
         end
       end
 
+      def object_type
+        @objects.first.object_type.pluralize if @objects.first
+      end
+
       def json_key
         @objects.first.json_key if @objects.first
       end
