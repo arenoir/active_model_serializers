@@ -9,12 +9,15 @@ module ActiveModel
       end
 
       def associations_for(chain)
-        return unless association_chain
-        association_chain.find_all { |a| (a - chain) }.map!(&:first)
+        association_chain.map { |a| (a - chain).first }.compact
       end
 
       def include?(chain)
         association_chain.any? { |a| a == chain }
+      end
+
+      def include_nested_association?(chain)
+        association_chain.any? { |a| (a - chain).size > 1 }
       end
 
       private
@@ -24,6 +27,8 @@ module ActiveModel
           assoc.map { |key| key.split('.').map(&:to_sym) }
         elsif assoc.is_a?(String)
           assoc.split(',').map { |key| key.split('.').map(&:to_sym) }
+        else
+          []
         end
       end
 

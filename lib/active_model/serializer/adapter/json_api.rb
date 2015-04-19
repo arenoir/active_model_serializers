@@ -8,9 +8,7 @@ module ActiveModel
           @hash = {}
           @top = @options.fetch(:top) { @hash }
 
-          if chain = options[:include]
-            @association_chain = ActiveModel::Serializer::AssociationChain.new(chain)
-          end
+          @association_chain = ActiveModel::Serializer::AssociationChain.new(options.delete(:include))
 
           if fields = options.delete(:fields)
             @fieldset = ActiveModel::Serializer::Fieldset.new(fields, serializer.json_key)
@@ -29,86 +27,83 @@ module ActiveModel
           else
             @hash[@root] = attributes_for_serializer(serializer, @options)
 
-            serializer.each_association do |name, serializer, opts|
-              @hash[@root][:links] ||= {}
-               
-
-
-                if serializer.respond_to?(:each)
-                  add_links(name, serializer, opts)
-                else
-                  add_link(name, serializer, opts)
-                end
-            end
+            add_resource_links(@hash[@root], serializer)
           end
 
           @hash
         end
 
-        def add_links(name, serializer, options)
-            type = serializer.object_type
-            ids  = serializer.map { |serializer| serializer.id.to_s }
+      private
 
-            if !type || name.to_s == type
-              @hash[@root][:links][name] ||= []
-              @hash[@root][:links][name] = ids
-            else
-              @hash[@root][:links][name] ||= {}
-              @hash[@root][:links][name][:type] = type
-              @hash[@root][:links][name][:ids] = ids
-            end
+        def add_links(hash, name, serializers)
+          type = serializers.object_type
+          ids  = serializers.map { |serializer| serializer.id.to_s }
           
-
-          unless serializer.none? || @options[:embed] == :ids
-            serializer.each { |s| add_linked(name, s) }
-          end
-        end
-
-        def add_link(name, serializer, options)
-          if serializer
-            type = serializer.object.class.to_s.underscore
-            if name.to_s == type || !type
-              @hash[@root][:links][name] = serializer.id.to_s
-            else
-              @hash[@root][:links][name] ||= {}
-              @hash[@root][:links][name][:type] = type
-              @hash[@root][:links][name][:id] = serializer.id.to_s
-            end
-
-            unless @options[:embed] == :ids
-              add_linked(name, serializer)
-            end
+          if !type || name.to_s == type
+            hash[:links][name] ||= []
+            hash[:links][name] = ids
           else
-            @hash[@root][:links][name] = nil
+            hash[:links][name] ||= {}
+            hash[:links][name][:type] = type
+            hash[:links][name][:ids] = ids
           end
         end
 
-        def add_linked(resource, serializer, chain = [])
+        def add_link(resource, name, serializer)
+          resource[:links] ||= {}
+          resource[:links][name] = nil
 
-          chain << resource 
+          if serializer
+            type = serializer.object_type
+
+            if name.to_s == type || !type
+              resource[:links][name] = serializer.id.to_s
+            else
+              resource[:links][name] ||= {}
+              resource[:links][name][:type] = type
+              resource[:links][name][:id] = serializer.id.to_s
+            end
+          end
+        end
+
+
+        def add_linked(assocation_name, serializer, chain = [])
+
+          chain << assocation_name
 
           if include_association?(chain)
-            plural_name = resource.to_s.pluralize.to_sym
-            attrs = attributes_for_serializer(serializer, @options)
+            plural_name = assocation_name.to_s.pluralize.to_sym
+            attrs = [attributes_for_serializer(serializer, @options)].flatten
+
             @top[:linked] ||= {}
             @top[:linked][plural_name] ||= []
-            @top[:linked][plural_name].push attrs unless @top[:linked][plural_name].include? attrs
-          end
 
-          return if serializer.nil? || serializer.respond_to?(:each)
+            attrs.each do |attrs|
+              add_resource_links(attrs, serializer, add_linked: false)
+
+              @top[:linked][plural_name].push(attrs) unless @top[:linked][plural_name].include?(attrs)
+            end
+          end
 
           if associations = associations_for(chain)
             serializer.each_association do |name, association, opts|
-              if associations.include?(name)
+              # puts 
+              # print associations.join(',') + " | " + name.to_s
+              # if name == :roles
+              #   puts chain.join('-')
+              # end
+              # if !associations.include?(name)
+              #   print ' no'  
+              # end
+              # puts
+
+              if association && associations.include?(name)
                 add_linked(name, association, chain) 
               end
             end
           end
-
         end
-
-
-        private
+  
 
         def associations_for(chain)
           @association_chain && @association_chain.associations_for(chain)
@@ -119,11 +114,12 @@ module ActiveModel
           @association_chain && @association_chain.include?(chain)
         end
 
+        def included_nested_association?(chain, assocation)
+           @association_chain.include?(chain)
+        end
 
         def attributes_for_serializer(serializer, options)
-          if fields = @fieldset && @fieldset.fields_for(serializer)
-            options[:fields] = fields
-          end
+          options[:fields] = @fieldset && @fieldset.fields_for(serializer)
 
           attributes = serializer.attributes(options)
           attributes[:id] = attributes[:id].to_s if attributes[:id]
@@ -134,11 +130,27 @@ module ActiveModel
           @association_key && @association_key.include?(serializer)
         end
 
-        def included_nested_association?(serializer)
-        end
 
-        def include_assoc? assoc
-          @options[:include] && @options[:include].split(',').include?(assoc.to_s)
+
+
+        def add_resource_links(attrs, serializer, options = {})
+          options[:add_linked] = options.fetch(:add_linked, true)
+
+          Array(serializer).first.each_association do |name, association, opts|
+            attrs[:links] ||= {}
+
+            if association.respond_to?(:each)
+              add_links(attrs, name, association)
+            else
+              add_link(attrs, name, association)
+            end
+
+            if @options[:embed] != :ids && options[:add_linked]
+              Array(association).each do |association|
+                add_linked(name, association)
+              end
+            end
+          end
         end
       end
     end

@@ -8,6 +8,8 @@ module ActiveModel
           def setup
             @author = Author.new(id: 1, name: 'Steve K.')
             @author.posts = []
+            @author.bio = nil
+            @author.roles = []
             @post = Post.new(id: 1, title: 'New Post', body: 'Body')
             @post_without_comments = Post.new(id: 2, title: 'Second Post', body: 'Second')
             @first_comment = Comment.new(id: 1, body: 'ZOMG A COMMENT')
@@ -34,10 +36,22 @@ module ActiveModel
 
           def test_includes_linked_comments
             @adapter = ActiveModel::Serializer::Adapter::JsonApi.new(@serializer, include: 'comments')
-            assert_equal([
-                           {id: "1", body: 'ZOMG A COMMENT'},
-                           {id: "2", body: 'ZOMG ANOTHER COMMENT'}
-                         ], @adapter.serializable_hash[:linked][:comments])
+            expected = [{
+              id: "1",
+              body: 'ZOMG A COMMENT',
+              links: {
+                post: "1",
+                author: nil
+              }
+            }, {
+              id: "2",
+              body: 'ZOMG ANOTHER COMMENT',
+              links: {
+                post: "1",
+                author: nil
+              }
+            }]
+            assert_equal expected, @adapter.serializable_hash[:linked][:comments]
           end
 
           def test_includes_linked_comments_author_without_comment
