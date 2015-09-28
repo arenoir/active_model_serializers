@@ -111,8 +111,25 @@ module ActiveModel
 
         assert_equal({
           'post' => { title: 'Title 1', body: 'Body 1', 'comment_ids' => @post.comments.map { |c| c.object_id } },
-          comments: [{ content: 'C1' }, { content: 'C2' }]
+          'comments' => [{ content: 'C1' }, { content: 'C2' }]
         }, @post_serializer.as_json)
+      end
+
+      def test_associations_embedding_ids_including_objects_serialization_when_invoked_from_parent_serializer
+        @association.embed = :ids
+        @association.embed_in_root = true
+
+        category = Category.new(name: 'Name 1')
+        category.instance_variable_set(:@posts, [@post])
+        category_serializer = CategorySerializer.new(category)
+
+        assert_equal({
+          'category' => {
+            name: 'Name 1',
+            posts: [{ title: 'Title 1', body: 'Body 1', 'comment_ids' => @post.comments.map { |c| c.object_id } }]
+          },
+          "comments" => [{ content: 'C1' }, { content: 'C2' }]
+        }, category_serializer.as_json)
       end
 
       def test_associations_embedding_nothing_including_objects_serialization_using_as_json
@@ -121,7 +138,7 @@ module ActiveModel
 
         assert_equal({
           'post' => { title: 'Title 1', body: 'Body 1' },
-          comments: [{ content: 'C1' }, { content: 'C2' }]
+          'comments' => [{ content: 'C1' }, { content: 'C2' }]
         }, @post_serializer.as_json)
       end
 
@@ -138,7 +155,7 @@ module ActiveModel
 
         assert_equal({
           'post' => { title: 'Title 1', body: 'Body 1', 'comment_ids' => @post.comments.map { |c| c.object_id } },
-          comments: [{ content: 'C1!' }, { content: 'C2!' }]
+          'comments' => [{ content: 'C1!' }, { content: 'C2!' }]
         }, @post_serializer.as_json)
       end
 
@@ -153,13 +170,13 @@ module ActiveModel
 
         assert_equal({
           'post' => { title: 'Title 1', body: 'Body 1', 'comment_ids' => @post.comments.map { |c| c.object_id } },
-          comments: { my_content: ['fake'] }
+          'comments' => { my_content: ['fake'] }
         }, @post_serializer.as_json)
       end
 
       def test_associations_embedding_objects_using_a_given_array_serializer
         @association.serializer_from_options = Class.new(ArraySerializer) do
-          def serializable_object
+          def serializable_object(options={})
             { my_content: ['fake'] }
           end
         end
@@ -167,6 +184,81 @@ module ActiveModel
         assert_equal({
           'post' => { title: 'Title 1', body: 'Body 1', comments: { my_content: ['fake'] } }
         }, @post_serializer.as_json)
+      end
+
+      def test_associations_embedding_ids_including_objects_serialization_with_embed_in_root_key
+        @association.embed_in_root = true
+        @association.embed_in_root_key = :linked
+        @association.embed = :ids
+        assert_equal({
+          'post' => {
+            title: 'Title 1', body: 'Body 1',
+            'comment_ids' => @post.comments.map(&:object_id)
+          },
+          linked: {
+            'comments' => [
+              { content: 'C1' },
+              { content: 'C2' }
+            ]
+          },
+        }, @post_serializer.as_json)
+      end
+
+      def test_associations_embedding_ids_using_embed_namespace_including_object_serialization_with_embed_in_root_key
+        @association.embed_in_root = true
+        @association.embed_in_root_key = :linked
+        @association.embed = :ids
+        @association.embed_namespace = :links
+        @association.key = :comments
+        assert_equal({
+          'post' => {
+            title: 'Title 1', body: 'Body 1',
+            links: {
+              comments: @post.comments.map(&:object_id)
+            }
+          },
+          linked: {
+            'comments' => [
+              { content: 'C1' },
+              { content: 'C2' }
+            ]
+          },
+        }, @post_serializer.as_json)
+      end
+
+      def test_associations_embedding_objects_using_embed_namespace
+        @association.embed = :objects
+        @association.embed_namespace = :links
+
+        assert_equal({
+          'post' => {
+            title: 'Title 1', body: 'Body 1',
+            links: {
+              comments: [
+                { content: 'C1' },
+                { content: 'C2' }
+              ]
+            }
+          }
+        }, @post_serializer.as_json)
+      end
+
+      def test_associations_name_key_embedding_ids_serialization_using_serializable_hash
+        @association = NameKeyPostSerializer._associations[:comments]
+        @association.embed = :ids
+
+        assert_equal({
+          title: 'Title 1', body: 'Body 1', 'comments' => @post.comments.map { |c| c.object_id }
+        }, NameKeyPostSerializer.new(@post).serializable_hash)
+      end
+
+      def test_associations_name_key_embedding_ids_serialization_using_as_json
+        @association = NameKeyPostSerializer._associations[:comments]
+        @association.embed = :ids
+
+        assert_equal({
+          'name_key_post' => { title: 'Title 1', body: 'Body 1', 'comments' => @post.comments.map { |c| c.object_id } }
+        }, NameKeyPostSerializer.new(@post).as_json)
       end
     end
   end

@@ -9,12 +9,46 @@ module ActiveModel
       end
 
       def test_serializer_for_array_returns_appropriate_type
-        assert_kind_of ArraySerializer, @serializer
+        assert_kind_of ActiveModel::ArraySerializer, @serializer
       end
 
       def test_array_serializer_serializes_simple_objects
         assert_equal [1, 2, 3], @serializer.serializable_array
         assert_equal [1, 2, 3], @serializer.as_json
+      end
+    end
+
+    class CustomArraySerializerSupport < Minitest::Test
+      def setup
+        Object.const_set(:ArraySerializer, Class.new)
+
+        array = [1, 2, 3]
+        @serializer_class = Serializer.serializer_for(array)
+      end
+
+      def teardown
+        Object.send(:remove_const, :ArraySerializer)
+      end
+
+      def test_serializer_for_array_returns_appropriate_type
+        assert_equal ::ArraySerializer, @serializer_class
+      end
+    end
+
+    class CustomSerializerClassTest < Minitest::Test
+      def setup
+        Object.const_set(:CustomSerializer, Class.new)
+      end
+
+      def teardown
+        Object.send(:remove_const, :CustomSerializer)
+      end
+
+      def test_serializer_for_array_returns_appropriate_type
+        object = {}
+        def object.serializer_class; CustomSerializer; end
+
+        assert_equal CustomSerializer, Serializer.serializer_for(object)
       end
     end
 
@@ -68,7 +102,7 @@ module ActiveModel
               {title: "Title 1", body: "Body 1", "comment_ids" => @post1.comments.map(&:object_id) },
               {title: "Title 2", body: "Body 2", "comment_ids" => @post2.comments.map(&:object_id) }
             ],
-            comments: [
+            'comments' => [
               {content: "C1"},
               {content: "C2"},
               {content: "C3"},

@@ -1,5 +1,4 @@
 require 'bundler/setup'
-require 'coverage_setup' if ENV["CI"]
 require 'minitest/autorun'
 require 'active_model_serializers'
 require 'fixtures/poro'
@@ -17,6 +16,7 @@ module TestHelper
   end
 
   ActionController::Base.send :include, Routes.url_helpers
+  ActionController::Base.send :include, ActionController::Serialization
 end
 
 ActionController::TestCase.class_eval do

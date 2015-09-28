@@ -1,6 +1,5 @@
 require 'active_model/default_serializer'
 require 'active_model/serializable'
-require 'active_model/serializer'
 
 module ActiveModel
   class ArraySerializer
@@ -16,31 +15,35 @@ module ActiveModel
       @object          = object
       @scope           = options[:scope]
       @root            = options.fetch(:root, self.class._root)
+      @polymorphic     = options.fetch(:polymorphic, false)
       @meta_key        = options[:meta_key] || :meta
       @meta            = options[@meta_key]
       @each_serializer = options[:each_serializer]
       @resource_name   = options[:resource_name]
       @params          = options[:params]
       @association_chain = options.fetch(:association_chain, [])
+      @only            = options[:only] ? Array(options[:only]) : nil
+      @except          = options[:except] ? Array(options[:except]) : nil
+      @context         = options[:context]
+      @namespace       = options[:namespace]
+      @key_format      = options[:key_format] || options[:each_serializer].try(:key_format)
     end
-    attr_accessor :object, :scope, :root, :meta_key, :meta, :params, :association_chain
+    attr_accessor :object, :scope, :root, :meta_key, :meta, :key_format, :context, :params, :association_chain
 
     def json_key
-      if root.nil?
-        @resource_name
-      else
-        root
-      end
+      key = root.nil? ? @resource_name : root
+
+      key_format == :lower_camel && key.present? ? key.camelize(:lower) : key
     end
 
     def serializer_for(item)
-      serializer_class = @each_serializer || Serializer.serializer_for(item) || DefaultSerializer
-      serializer_class.new(item, scope: scope, params: params, association_chain: association_chain)
+      serializer_class = @each_serializer || Serializer.serializer_for(item, namespace: @namespace) || DefaultSerializer
+      serializer_class.new(item, scope: scope, key_format: key_format, context: @context, only: @only, except: @except, polymorphic: @polymorphic, namespace: @namespace, params: params, association_chain: association_chain)
     end
 
-    def serializable_object
+    def serializable_object(options={})
       @object.map do |item|
-        serializer_for(item).serializable_object
+        serializer_for(item).serializable_object_with_notification(options)
       end
     end
     alias_method :serializable_array, :serializable_object
@@ -51,12 +54,22 @@ module ActiveModel
           next if !objects || objects.flatten.empty?
 
           if hash.has_key?(type)
-            hash[type].concat(objects).uniq!
+            case hash[type] when Hash
+              hash[type].deep_merge!(objects){ |key, old, new| (Array(old) + Array(new)).uniq }
+            else
+              hash[type].concat(objects).uniq!
+            end
           else
             hash[type] = objects
           end
         end
       end
+    end
+
+    private
+
+    def instrumentation_keys
+      [:object, :scope, :root, :meta_key, :meta, :each_serializer, :resource_name, :key_format, :context]
     end
   end
 end
